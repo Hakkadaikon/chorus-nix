@@ -13,6 +13,8 @@ set -euo pipefail
 #   SSH_KEY        SSH 秘密鍵パス
 #   RELAY_DOMAIN   リレーのドメイン名
 #   TUNNEL_ID      Cloudflare Tunnel ID
+#   ADMIN_DOMAIN   管理画面のドメイン名
+#   ADMIN_TOKEN    Pfortner 管理画面の認証トークン
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -22,6 +24,8 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 : "${SSH_KEY:?SSH_KEY is required}"
 : "${RELAY_DOMAIN:?RELAY_DOMAIN is required}"
 : "${TUNNEL_ID:?TUNNEL_ID is required}"
+: "${ADMIN_DOMAIN:?ADMIN_DOMAIN is required}"
+: "${ADMIN_TOKEN:?ADMIN_TOKEN is required}"
 
 SSH_CMD="ssh -i $SSH_KEY ${VPS_USER}@${VPS_HOST}"
 SCP_CMD="scp -i $SSH_KEY"
@@ -39,6 +43,8 @@ for f in "$REPO_DIR"/config/*; do
     sed \
         -e "s/\${RELAY_DOMAIN}/${RELAY_DOMAIN}/g" \
         -e "s/\${TUNNEL_ID}/${TUNNEL_ID}/g" \
+        -e "s/\${ADMIN_DOMAIN}/${ADMIN_DOMAIN}/g" \
+        -e "s/\${ADMIN_TOKEN}/${ADMIN_TOKEN}/g" \
         "$f" > "$TMPDIR/$(basename "$f")"
 done
 

@@ -12,6 +12,11 @@ server:
     max: 200
     max_per_ip: 10
 
+admin:
+  enabled: true
+  auth_token: '${ADMIN_TOKEN}'
+  path: '/admin'
+
 auth:
   enabled: false
 
