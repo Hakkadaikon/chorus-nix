@@ -1,0 +1,18 @@
+[Unit]
+Description=Pfortner Nostr Relay Proxy
+After=network.target chorus.service
+Wants=chorus.service
+
+[Service]
+Type=simple
+User=chorus
+Group=chorus
+WorkingDirectory=/opt/pfortner/repo
+ExecStart=/usr/bin/deno run --unstable-net --allow-env --allow-net --allow-read scripts/serve.ts /opt/pfortner/etc/pfortner.yaml
+Environment=DENO_DIR=/opt/pfortner/cache
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
