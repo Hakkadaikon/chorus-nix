@@ -20,7 +20,7 @@ pipelines:
     - policy: kind-filter
       config:
         mode: allow
-        kinds: [0, 5, 7, 40, 42, 10002, 27235]
+        kinds: [0, 5, 7, 40, 41, 42, 10002, 27235]
     - policy: accept
 
   server:
