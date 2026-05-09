@@ -21,6 +21,12 @@ pipelines:
       config:
         mode: allow
         kinds: [0, 5, 7, 40, 41, 42, 10002, 27235]
+    - policy: spam-filter
+      config:
+        max_content_length: 1000
+        reject_duplicate:
+          enabled: true
+          window: 300
     - policy: accept
 
   server:
