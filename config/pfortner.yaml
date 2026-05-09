@@ -10,7 +10,7 @@ server:
 
   connections:
     max: 200
-    max_per_ip: 10
+    max_per_ip: 200
 
 admin:
   enabled: true
