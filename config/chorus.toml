@@ -1,7 +1,7 @@
 data_directory = "/opt/chorus/var/chorus"
 ip_address = "127.0.0.1"
 port = 8080
-hostname = "vim_relay.hakkadaikon.com"
+hostname = "${RELAY_DOMAIN}"
 use_tls = false
 chorus_is_behind_a_proxy = false
 open_relay = false

@@ -7,17 +7,21 @@ set -euo pipefail
 # Options:
 #   --config-only   設定ファイルのみ転送 (バイナリはスキップ)
 #
-# 環境変数:
-#   VPS_HOST    VPS のホスト名 (default: tk2-202-10829.vs.sakura.ne.jp)
-#   VPS_USER    SSH ユーザー名 (default: rocky)
-#   SSH_KEY     SSH 秘密鍵パス (default: ~/.ssh/id_ed25519_sakura)
+# 環境変数 (すべて必須):
+#   VPS_HOST       VPS のホスト名
+#   VPS_USER       SSH ユーザー名
+#   SSH_KEY        SSH 秘密鍵パス
+#   RELAY_DOMAIN   リレーのドメイン名
+#   TUNNEL_ID      Cloudflare Tunnel ID
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-VPS_HOST="${VPS_HOST:-tk2-202-10829.vs.sakura.ne.jp}"
-VPS_USER="${VPS_USER:-rocky}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519_sakura}"
+: "${VPS_HOST:?VPS_HOST is required}"
+: "${VPS_USER:?VPS_USER is required}"
+: "${SSH_KEY:?SSH_KEY is required}"
+: "${RELAY_DOMAIN:?RELAY_DOMAIN is required}"
+: "${TUNNEL_ID:?TUNNEL_ID is required}"
 
 SSH_CMD="ssh -i $SSH_KEY ${VPS_USER}@${VPS_HOST}"
 SCP_CMD="scp -i $SSH_KEY"
@@ -27,7 +31,18 @@ if [[ "${1:-}" == "--config-only" ]]; then
     CONFIG_ONLY=true
 fi
 
-echo "==> Deploying to ${VPS_USER}@${VPS_HOST}"
+# --- Generate config from templates ---
+TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR"' EXIT
+
+for f in "$REPO_DIR"/config/*; do
+    sed \
+        -e "s/\${RELAY_DOMAIN}/${RELAY_DOMAIN}/g" \
+        -e "s/\${TUNNEL_ID}/${TUNNEL_ID}/g" \
+        "$f" > "$TMPDIR/$(basename "$f")"
+done
+
+echo "==> Deploying to ${VPS_USER}@${VPS_HOST} (domain: ${RELAY_DOMAIN})"
 
 # --- Chorus binary ---
 if [[ "$CONFIG_ONLY" == false ]]; then
@@ -44,12 +59,12 @@ fi
 # --- Config files ---
 echo "==> Transferring config files..."
 $SCP_CMD \
-    "$REPO_DIR/config/chorus.toml" \
-    "$REPO_DIR/config/pfortner.yaml" \
-    "$REPO_DIR/config/cloudflared.yml" \
-    "$REPO_DIR/config/chorus.service" \
-    "$REPO_DIR/config/pfortner.service" \
-    "$REPO_DIR/config/cloudflared.service" \
+    "$TMPDIR/chorus.toml" \
+    "$TMPDIR/pfortner.yaml" \
+    "$TMPDIR/cloudflared.yml" \
+    "$TMPDIR/chorus.service" \
+    "$TMPDIR/pfortner.service" \
+    "$TMPDIR/cloudflared.service" \
     "${VPS_USER}@${VPS_HOST}:/tmp/"
 
 echo "==> Installing config files on VPS..."

@@ -21,8 +21,12 @@ gh run download <RUN_ID> --name chorus-linux-x86_64-musl --dir ./chorus-bin
 
 ## デプロイ
 
+環境変数 `VPS_HOST`, `VPS_USER`, `SSH_KEY`, `RELAY_DOMAIN`, `TUNNEL_ID` を設定して実行してください。
+
 ```bash
-./scripts/deploy.sh             # バイナリ + 設定ファイルをデプロイ
+VPS_HOST=... VPS_USER=... SSH_KEY=... RELAY_DOMAIN=... TUNNEL_ID=... \
+  ./scripts/deploy.sh             # バイナリ + 設定ファイルをデプロイ
+
 ./scripts/deploy.sh --config-only  # 設定ファイルのみデプロイ
 ```
 
@@ -30,11 +34,11 @@ gh run download <RUN_ID> --name chorus-linux-x86_64-musl --dir ./chorus-bin
 
 | ファイル | 配置先 (VPS) | 説明 |
 |---------|-------------|------|
-| `config/chorus.toml` | `/opt/chorus/etc/chorus.toml` | Chorus 設定 |
+| `config/chorus.toml` | `/opt/chorus/etc/chorus.toml` | Chorus 設定 (テンプレート) |
 | `config/chorus.service` | `/etc/systemd/system/chorus.service` | Chorus systemd |
 | `config/pfortner.yaml` | `/opt/pfortner/etc/pfortner.yaml` | Pfortner 設定 (kind フィルタ) |
 | `config/pfortner.service` | `/etc/systemd/system/pfortner.service` | Pfortner systemd |
-| `config/cloudflared.yml` | `/etc/cloudflared/config.yml` | Cloudflare Tunnel 設定 |
+| `config/cloudflared.yml` | `/etc/cloudflared/config.yml` | Cloudflare Tunnel 設定 (テンプレート) |
 | `config/cloudflared.service` | `/etc/systemd/system/cloudflared.service` | cloudflared systemd |
 
 詳細な手順は [docs/deploy.md](docs/deploy.md) を参照してください。

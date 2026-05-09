@@ -1,9 +1,9 @@
-tunnel: c84d6146-4df6-4822-b2a9-36402a2c49c5
-credentials-file: /etc/cloudflared/c84d6146-4df6-4822-b2a9-36402a2c49c5.json
+tunnel: ${TUNNEL_ID}
+credentials-file: /etc/cloudflared/${TUNNEL_ID}.json
 
 ingress:
-  - hostname: vim_relay.hakkadaikon.com
+  - hostname: ${RELAY_DOMAIN}
     service: http://127.0.0.1:3000
     originRequest:
-      httpHostHeader: vim_relay.hakkadaikon.com
+      httpHostHeader: ${RELAY_DOMAIN}
   - service: http_status:404

@@ -68,11 +68,18 @@ gh run download <RUN_ID> --name chorus-linux-x86_64-musl --dir ./chorus-bin
 ./scripts/deploy.sh --config-only
 ```
 
-環境変数で接続先をカスタマイズできます:
+環境変数で接続先を指定します (すべて必須):
 
 ```bash
-VPS_HOST=your-vps.example.com VPS_USER=admin SSH_KEY=~/.ssh/id_rsa ./scripts/deploy.sh
+VPS_HOST=<VPS_HOST> \
+VPS_USER=<USER> \
+SSH_KEY=<SSH_KEY_PATH> \
+RELAY_DOMAIN=<RELAY_DOMAIN> \
+TUNNEL_ID=<TUNNEL_ID> \
+./scripts/deploy.sh
 ```
+
+`config/` 内のテンプレート (`${RELAY_DOMAIN}`, `${TUNNEL_ID}`) はスクリプト実行時に環境変数の値で置換されます。
 
 スクリプトが行う処理:
 
