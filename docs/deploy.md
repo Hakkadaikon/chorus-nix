@@ -25,13 +25,14 @@ Cloudflare Tunnel 経由で公開する手順です。
 
 ```
 config/
-  chorus.toml           # Chorus 設定
+  chorus.toml           # Chorus 設定 (テンプレート)
   chorus.service        # Chorus systemd ユニット
   pfortner.yaml         # Pfortner 設定 (kind フィルタリングルール)
   pfortner.service      # Pfortner systemd ユニット
-  cloudflared.yml       # Cloudflare Tunnel 設定
+  cloudflared.yml       # Cloudflare Tunnel 設定 (テンプレート)
   cloudflared.service   # cloudflared systemd ユニット
 scripts/
+  setup.sh              # VPS 初期セットアップスクリプト
   deploy.sh             # VPS へのデプロイスクリプト
 ```
 
@@ -88,76 +89,48 @@ TUNNEL_ID=<TUNNEL_ID> \
 3. systemd ユニットを更新し `daemon-reload`
 4. chorus, pfortner, cloudflared を再起動
 
-## 3. VPS の初期セットアップ (参考)
+## 3. VPS の初期セットアップ
 
 初回のみ必要な手順です。
 
-### swap の追加 (低メモリ VPS の場合)
+### 前提条件
+
+VPS 上で Cloudflare Tunnel を作成しておく必要があります (対話操作が必要なため手動):
 
 ```bash
-sudo fallocate -l 1G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-echo '/swapfile swap swap defaults 0 0' | sudo tee -a /etc/fstab
-```
-
-### chorus ユーザーとディレクトリ
-
-```bash
-sudo useradd -r -s /sbin/nologin chorus
-sudo mkdir -p /opt/chorus/{bin,etc,var/chorus}
-sudo chown -R chorus:chorus /opt/chorus/var
-```
-
-### Chorus の設定
-
-設定ファイルは `config/chorus.toml` で管理しています。
-
-> **注意**: `chorus_is_behind_a_proxy` は `false` にしてください。
-> cloudflared は chorus が要求する `X-Real-Ip` ヘッダーを送信しないため、
-> `true` にすると `RealIpHeaderMissing` エラーで起動に失敗します。
-> nginx 等のリバースプロキシを間に挟む場合は `true` にして `X-Real-Ip` を付与してください。
-
-### Deno のインストール
-
-```bash
-sudo dnf install -y unzip  # RHEL 系の場合
-curl -fsSL https://deno.land/install.sh | sh
-sudo cp ~/.deno/bin/deno /usr/bin/deno
-```
-
-### Pfortner のセットアップ
-
-```bash
-sudo mkdir -p /opt/pfortner/{repo,etc,cache}
-sudo git clone https://github.com/ikuradon/Pfortner /opt/pfortner/repo
-sudo DENO_DIR=/opt/pfortner/cache deno cache /opt/pfortner/repo/scripts/serve.ts
-sudo chown -R chorus:chorus /opt/pfortner
-```
-
-### Cloudflare Tunnel のセットアップ
-
-```bash
-sudo dnf install -y cloudflared  # RHEL 系
+ssh <USER>@<VPS_HOST>
+sudo dnf install -y cloudflared
 cloudflared tunnel login
 cloudflared tunnel create <TUNNEL_NAME>
-cloudflared tunnel route dns <TUNNEL_NAME> relay.example.com
+cloudflared tunnel route dns <TUNNEL_NAME> <RELAY_DOMAIN>
+# 生成された認証情報が /etc/cloudflared/<TUNNEL_ID>.json に配置されていることを確認
 ```
 
-設定ファイルは `config/cloudflared.yml` で管理しています。
-トンネル認証情報 (`<TUNNEL_ID>.json`) は VPS の `/etc/cloudflared/` に配置してください。
+### セットアップスクリプト
 
-> **注意**: `service` のポートは Pfortner の `3000` を指定してください (`8080` ではない)。
-
-### サービスの初回登録
+`scripts/setup.sh` で swap 作成、ユーザー作成、Deno/Pfortner/cloudflared のインストールをまとめて行います。
 
 ```bash
-# deploy.sh で設定ファイルを配置後
-sudo systemctl daemon-reload
-sudo systemctl enable chorus pfortner cloudflared
-sudo systemctl start chorus pfortner cloudflared
+VPS_HOST=<VPS_HOST> VPS_USER=<USER> SSH_KEY=<SSH_KEY_PATH> \
+./scripts/setup.sh
 ```
+
+スクリプトが行う処理:
+
+1. swap 1GB 作成 (既存の場合はスキップ)
+2. unzip, git インストール
+3. chorus ユーザー作成、ディレクトリ作成
+4. Deno インストール
+5. Pfortner クローン、依存関係キャッシュ
+6. cloudflared インストール
+7. systemd サービス有効化
+
+セットアップ完了後、`./scripts/deploy.sh` で設定ファイルとバイナリをデプロイしてください。
+
+### 設定上の注意
+
+- `chorus_is_behind_a_proxy` は `false` にしてください。cloudflared は chorus が要求する `X-Real-Ip` ヘッダーを送信しないため、`true` にすると `RealIpHeaderMissing` エラーで起動に失敗します。
+- cloudflared の `service` ポートは Pfortner の `3000` を指定してください (`8080` ではない)。
 
 ## 4. 動作確認
 

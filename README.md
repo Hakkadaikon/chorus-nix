@@ -19,9 +19,13 @@ gh workflow run build.yml
 gh run download <RUN_ID> --name chorus-linux-x86_64-musl --dir ./chorus-bin
 ```
 
-## デプロイ
+## 初期セットアップ
 
-環境変数 `VPS_HOST`, `VPS_USER`, `SSH_KEY`, `RELAY_DOMAIN`, `TUNNEL_ID` を設定して実行してください。
+```bash
+VPS_HOST=... VPS_USER=... SSH_KEY=... ./scripts/setup.sh
+```
+
+## デプロイ
 
 ```bash
 VPS_HOST=... VPS_USER=... SSH_KEY=... RELAY_DOMAIN=... TUNNEL_ID=... \
