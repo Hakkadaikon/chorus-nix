@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "chorus-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777483015,
+        "narHash": "sha256-JNgfHvAtBn9rgJwZTLt4IfbuGKPqFcqMZXXn7hBfnSo=",
+        "owner": "mikedilger",
+        "repo": "chorus",
+        "rev": "411f16ad18397cd3474016015f7f074a0c285430",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mikedilger",
+        "repo": "chorus",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1751274312,
+        "narHash": "sha256-/bVBlRpECLVzjV19t5KMdMFWSwKLtb5RyXdjz3LJT+g=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "50ab793786d9de88ee30ec4e4c24fb4236fc2674",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-24.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "chorus-src": "chorus-src",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

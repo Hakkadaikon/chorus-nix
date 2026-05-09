@@ -1,0 +1,33 @@
+name: Build chorus static binary
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout chorus
+        uses: actions/checkout@v4
+        with:
+          repository: mikedilger/chorus
+          ref: 411f16ad18397cd3474016015f7f074a0c285430
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl-tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build static binary
+        run: cargo build --release --target x86_64-unknown-linux-musl
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static"
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: chorus-linux-x86_64-musl
+          path: target/x86_64-unknown-linux-musl/release/chorus

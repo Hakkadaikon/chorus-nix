@@ -32,7 +32,12 @@
             pname = "chorus";
             version = chorus-src.shortRev or "dev";
             src = chorus-src;
-            cargoLock.lockFile = "${chorus-src}/Cargo.lock";
+            cargoLock = {
+              lockFile = "${chorus-src}/Cargo.lock";
+              outputHashes = {
+                "pocket-db-0.1.0" = "sha256-7NYYnQ198Emdmefs2hkHa/4WqGC/nY6wKC5Td5iIKpE=";
+              };
+            };
           };
         in
         {
