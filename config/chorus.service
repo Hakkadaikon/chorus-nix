@@ -1,0 +1,15 @@
+[Unit]
+Description=Chorus Nostr Relay
+After=network.target
+
+[Service]
+Type=simple
+User=chorus
+Group=chorus
+ExecStart=/opt/chorus/bin/chorus /opt/chorus/etc/chorus.toml
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

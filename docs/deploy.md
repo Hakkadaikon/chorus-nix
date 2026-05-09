@@ -21,17 +21,23 @@ Cloudflare Tunnel 経由で公開する手順です。
 - **プロキシ**: [Pfortner](https://github.com/ikuradon/Pfortner) (Deno, kind フィルタリング)
 - **トンネル**: Cloudflare Tunnel (`cloudflared`)
 
+## リポジトリのファイル構成
+
+```
+config/
+  chorus.toml           # Chorus 設定
+  chorus.service        # Chorus systemd ユニット
+  pfortner.yaml         # Pfortner 設定 (kind フィルタリングルール)
+  pfortner.service      # Pfortner systemd ユニット
+  cloudflared.yml       # Cloudflare Tunnel 設定
+  cloudflared.service   # cloudflared systemd ユニット
+scripts/
+  deploy.sh             # VPS へのデプロイスクリプト
+```
+
 ## 1. Chorus バイナリのビルド
 
 GitHub Actions でビルドします。低メモリ VPS では Rust のコンパイルが困難なため、CI でのビルドを推奨します。
-
-### 手順
-
-1. GitHub 上で Actions タブを開く → "Build chorus static binary"
-2. "Run workflow" をクリックして実行
-3. 完了後、Artifacts から `chorus-linux-x86_64-musl` をダウンロード
-
-### CLI での操作
 
 ```bash
 # ワークフロー実行
@@ -40,61 +46,72 @@ gh workflow run build.yml
 # 最新の実行を確認
 gh run list --limit 1
 
-# アーティファクトをダウンロード
+# アーティファクトをダウンロード (リポジトリルートの chorus-bin/ に配置)
 gh run download <RUN_ID> --name chorus-linux-x86_64-musl --dir ./chorus-bin
 ```
 
 ### chorus のバージョンを変更する場合
 
-`.github/workflows/build.yml` の `ref` を更新してください:
-
-```yaml
-- name: Checkout chorus
-  uses: actions/checkout@v4
-  with:
-    repository: mikedilger/chorus
-    ref: <新しいコミットハッシュ>
-```
+`.github/workflows/build.yml` の `ref` を更新してください。
 
 ## 2. VPS へのデプロイ
 
-### Chorus バイナリの転送と配置
+### デプロイスクリプト
+
+`scripts/deploy.sh` で設定ファイルの転送、サービスの再起動をまとめて行えます。
 
 ```bash
-# ローカルから転送
+# バイナリ + 全設定ファイルをデプロイ
+./scripts/deploy.sh
+
+# 設定ファイルのみデプロイ (バイナリはスキップ)
+./scripts/deploy.sh --config-only
+```
+
+環境変数で接続先をカスタマイズできます:
+
+```bash
+VPS_HOST=your-vps.example.com VPS_USER=admin SSH_KEY=~/.ssh/id_rsa ./scripts/deploy.sh
+```
+
+スクリプトが行う処理:
+
+1. `chorus-bin/chorus` を VPS に転送・配置 (`--config-only` でスキップ)
+2. `config/` 内の全設定ファイルを VPS に転送・配置
+3. systemd ユニットを更新し `daemon-reload`
+4. chorus, pfortner, cloudflared を再起動
+
+### 手動デプロイ
+
+スクリプトを使わない場合の手順:
+
+```bash
+# バイナリ転送
 scp ./chorus-bin/chorus <USER>@<VPS_HOST>:/tmp/chorus
+ssh <USER>@<VPS_HOST> 'sudo cp /tmp/chorus /opt/chorus/bin/chorus && sudo chmod 755 /opt/chorus/bin/chorus && sudo chown chorus:chorus /opt/chorus/bin/chorus'
+
+# 設定ファイル転送
+scp config/chorus.toml <USER>@<VPS_HOST>:/tmp/
+scp config/pfortner.yaml <USER>@<VPS_HOST>:/tmp/
+scp config/cloudflared.yml <USER>@<VPS_HOST>:/tmp/
+scp config/*.service <USER>@<VPS_HOST>:/tmp/
 
 # VPS 上で配置
-sudo cp /tmp/chorus /opt/chorus/bin/chorus
-sudo chmod 755 /opt/chorus/bin/chorus
-sudo chown chorus:chorus /opt/chorus/bin/chorus
-```
-
-### Pfortner の更新
-
-```bash
-cd /opt/pfortner/repo
-sudo -u chorus git pull
-```
-
-### 設定ファイルの更新
-
-chorus-nix リポジトリの `config/` ディレクトリにある設定ファイルを VPS に転送します:
-
-```bash
-scp config/pfortner.yaml <USER>@<VPS_HOST>:/tmp/pfortner.yaml
-
-# VPS 上で配置
+ssh <USER>@<VPS_HOST> bash -c '
+sudo cp /tmp/chorus.toml /opt/chorus/etc/chorus.toml
 sudo cp /tmp/pfortner.yaml /opt/pfortner/etc/pfortner.yaml
-sudo chown chorus:chorus /opt/pfortner/etc/pfortner.yaml
+sudo cp /tmp/cloudflared.yml /etc/cloudflared/config.yml
+sudo cp /tmp/chorus.service /tmp/pfortner.service /tmp/cloudflared.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl restart chorus pfortner cloudflared
+'
 ```
 
-### サービスの再起動
+### Pfortner のアップデート
 
 ```bash
-sudo systemctl restart chorus
+ssh <USER>@<VPS_HOST> 'cd /opt/pfortner/repo && sudo -u chorus git pull && sudo DENO_DIR=/opt/pfortner/cache deno cache scripts/serve.ts'
 sudo systemctl restart pfortner
-sudo systemctl status chorus pfortner
 ```
 
 ## 3. VPS の初期セットアップ (参考)
@@ -119,167 +136,53 @@ sudo mkdir -p /opt/chorus/{bin,etc,var/chorus}
 sudo chown -R chorus:chorus /opt/chorus/var
 ```
 
-### chorus.toml
+### Chorus の設定
 
-`/opt/chorus/etc/chorus.toml`:
-
-```toml
-data_directory = "/opt/chorus/var/chorus"
-ip_address = "127.0.0.1"
-port = 8080
-hostname = "relay.example.com"
-use_tls = false
-chorus_is_behind_a_proxy = false
-open_relay = false
-verify_events = true
-allow_scraping = false
-```
+設定ファイルは `config/chorus.toml` で管理しています。
 
 > **注意**: `chorus_is_behind_a_proxy` は `false` にしてください。
 > cloudflared は chorus が要求する `X-Real-Ip` ヘッダーを送信しないため、
 > `true` にすると `RealIpHeaderMissing` エラーで起動に失敗します。
 > nginx 等のリバースプロキシを間に挟む場合は `true` にして `X-Real-Ip` を付与してください。
 
-### chorus systemd サービス
-
-`/etc/systemd/system/chorus.service`:
-
-```ini
-[Unit]
-Description=Chorus Nostr Relay
-After=network.target
-
-[Service]
-Type=simple
-User=chorus
-Group=chorus
-ExecStart=/opt/chorus/bin/chorus /opt/chorus/etc/chorus.toml
-Restart=always
-RestartSec=5
-LimitNOFILE=65536
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable chorus
-sudo systemctl start chorus
-```
-
 ### Deno のインストール
 
 ```bash
+sudo dnf install -y unzip  # RHEL 系の場合
 curl -fsSL https://deno.land/install.sh | sh
-sudo mv ~/.deno/bin/deno /usr/bin/deno
+sudo cp ~/.deno/bin/deno /usr/bin/deno
 ```
 
 ### Pfortner のセットアップ
 
 ```bash
-# ディレクトリ作成
 sudo mkdir -p /opt/pfortner/{repo,etc,cache}
-
-# リポジトリのクローン
 sudo git clone https://github.com/ikuradon/Pfortner /opt/pfortner/repo
-
-# 依存関係のキャッシュ
 sudo DENO_DIR=/opt/pfortner/cache deno cache /opt/pfortner/repo/scripts/serve.ts
-
-# 設定ファイルの配置 (chorus-nix リポジトリの config/pfortner.yaml を使用)
-sudo cp pfortner.yaml /opt/pfortner/etc/pfortner.yaml
-
-# オーナー設定
 sudo chown -R chorus:chorus /opt/pfortner
-```
-
-### Pfortner systemd サービス
-
-`/etc/systemd/system/pfortner.service` (chorus-nix リポジトリの `config/pfortner.service` を使用):
-
-```ini
-[Unit]
-Description=Pfortner Nostr Relay Proxy
-After=network.target chorus.service
-Wants=chorus.service
-
-[Service]
-Type=simple
-User=chorus
-Group=chorus
-WorkingDirectory=/opt/pfortner/repo
-ExecStart=/usr/bin/deno run --unstable-net --allow-env --allow-net --allow-read scripts/serve.ts /opt/pfortner/etc/pfortner.yaml
-Environment=DENO_DIR=/opt/pfortner/cache
-Restart=always
-RestartSec=5
-LimitNOFILE=65536
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo cp config/pfortner.service /etc/systemd/system/pfortner.service
-sudo systemctl daemon-reload
-sudo systemctl enable pfortner
-sudo systemctl start pfortner
 ```
 
 ### Cloudflare Tunnel のセットアップ
 
 ```bash
-# cloudflared のインストール (RHEL 系)
-sudo dnf install -y cloudflared
-# Debian 系の場合は公式ドキュメントを参照
-
-# トンネルの作成 (初回のみ)
+sudo dnf install -y cloudflared  # RHEL 系
 cloudflared tunnel login
 cloudflared tunnel create <TUNNEL_NAME>
-
-# DNS レコードの設定
 cloudflared tunnel route dns <TUNNEL_NAME> relay.example.com
 ```
 
-`/etc/cloudflared/config.yml` (Pfortner 経由に変更):
+設定ファイルは `config/cloudflared.yml` で管理しています。
+トンネル認証情報 (`<TUNNEL_ID>.json`) は VPS の `/etc/cloudflared/` に配置してください。
 
-```yaml
-tunnel: <TUNNEL_ID>
-credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
+> **注意**: `service` のポートは Pfortner の `3000` を指定してください (`8080` ではない)。
 
-ingress:
-  - hostname: relay.example.com
-    service: http://127.0.0.1:3000
-    originRequest:
-      httpHostHeader: relay.example.com
-  - service: http_status:404
-```
-
-> **注意**: `service` のポートを chorus の `8080` ではなく Pfortner の `3000` にしてください。
-
-`/etc/systemd/system/cloudflared.service`:
-
-```ini
-[Unit]
-Description=cloudflared
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-TimeoutStartSec=15
-Type=notify
-ExecStart=/usr/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run
-Restart=on-failure
-RestartSec=5s
-
-[Install]
-WantedBy=multi-user.target
-```
+### サービスの初回登録
 
 ```bash
+# deploy.sh で設定ファイルを配置後
 sudo systemctl daemon-reload
-sudo systemctl enable cloudflared
-sudo systemctl start cloudflared
+sudo systemctl enable chorus pfortner cloudflared
+sudo systemctl start chorus pfortner cloudflared
 ```
 
 ## 4. 動作確認
@@ -309,7 +212,7 @@ echo '["REQ","test",{"limit":1}]' | websocat wss://relay.example.com/
 | 10002 | リレーリストメタデータ |
 | 27235 | HTTP 認証イベント |
 
-許可する kind を変更するには `config/pfortner.yaml` を編集し、VPS に再配置してください。
+許可する kind を変更するには `config/pfortner.yaml` を編集し、`./scripts/deploy.sh --config-only` で反映してください。
 
 ## ディレクトリ構成 (VPS)
 
