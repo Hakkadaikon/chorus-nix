@@ -1,4 +1,4 @@
-# chorus-nix
+# vimrc-relay-setup
 
 [Chorus](https://github.com/mikedilger/chorus) Nostr Relay のビルド・デプロイ環境です。
 
@@ -10,6 +10,23 @@ Linux VPS + Cloudflare Tunnel でホストします。
 
 ```
 cloudflared → Pfortner (:3000, kind フィルタ) → Chorus (:8080)
+```
+
+## ファイル構成
+
+```
+config/
+  chorus.toml           # Chorus 設定 (テンプレート: ${RELAY_DOMAIN})
+  chorus.service        # Chorus systemd ユニット
+  pfortner.yaml         # Pfortner 設定 (kind フィルタリングルール)
+  pfortner.service      # Pfortner systemd ユニット
+  cloudflared.yml       # Cloudflare Tunnel 設定 (テンプレート: ${RELAY_DOMAIN}, ${TUNNEL_ID})
+  cloudflared.service   # cloudflared systemd ユニット
+scripts/
+  setup.sh              # VPS 初期セットアップ
+  deploy.sh             # 設定ファイル・バイナリのデプロイ
+.github/workflows/
+  build.yml             # Chorus 静的バイナリのビルド
 ```
 
 ## ビルド
@@ -33,16 +50,5 @@ VPS_HOST=... VPS_USER=... SSH_KEY=... RELAY_DOMAIN=... TUNNEL_ID=... \
 
 ./scripts/deploy.sh --config-only  # 設定ファイルのみデプロイ
 ```
-
-## 設定ファイル
-
-| ファイル | 配置先 (VPS) | 説明 |
-|---------|-------------|------|
-| `config/chorus.toml` | `/opt/chorus/etc/chorus.toml` | Chorus 設定 (テンプレート) |
-| `config/chorus.service` | `/etc/systemd/system/chorus.service` | Chorus systemd |
-| `config/pfortner.yaml` | `/opt/pfortner/etc/pfortner.yaml` | Pfortner 設定 (kind フィルタ) |
-| `config/pfortner.service` | `/etc/systemd/system/pfortner.service` | Pfortner systemd |
-| `config/cloudflared.yml` | `/etc/cloudflared/config.yml` | Cloudflare Tunnel 設定 (テンプレート) |
-| `config/cloudflared.service` | `/etc/systemd/system/cloudflared.service` | cloudflared systemd |
 
 詳細な手順は [docs/deploy.md](docs/deploy.md) を参照してください。

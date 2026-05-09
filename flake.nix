@@ -1,5 +1,5 @@
 {
-  description = "Nix build for Chorus Nostr relay — cross-compile to x86_64-linux-musl static binary";
+  description = "vimrc-relay-setup — Chorus Nostr relay build and deploy";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";

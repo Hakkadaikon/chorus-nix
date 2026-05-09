@@ -21,21 +21,6 @@ Cloudflare Tunnel 経由で公開する手順です。
 - **プロキシ**: [Pfortner](https://github.com/ikuradon/Pfortner) (Deno, kind フィルタリング)
 - **トンネル**: Cloudflare Tunnel (`cloudflared`)
 
-## リポジトリのファイル構成
-
-```
-config/
-  chorus.toml           # Chorus 設定 (テンプレート)
-  chorus.service        # Chorus systemd ユニット
-  pfortner.yaml         # Pfortner 設定 (kind フィルタリングルール)
-  pfortner.service      # Pfortner systemd ユニット
-  cloudflared.yml       # Cloudflare Tunnel 設定 (テンプレート)
-  cloudflared.service   # cloudflared systemd ユニット
-scripts/
-  setup.sh              # VPS 初期セットアップスクリプト
-  deploy.sh             # VPS へのデプロイスクリプト
-```
-
 ## 1. Chorus バイナリのビルド
 
 GitHub Actions でビルドします。低メモリ VPS では Rust のコンパイルが困難なため、CI でのビルドを推奨します。
