@@ -88,39 +88,6 @@ TUNNEL_ID=<TUNNEL_ID> \
 3. systemd ユニットを更新し `daemon-reload`
 4. chorus, pfortner, cloudflared を再起動
 
-### 手動デプロイ
-
-スクリプトを使わない場合の手順:
-
-```bash
-# バイナリ転送
-scp ./chorus-bin/chorus <USER>@<VPS_HOST>:/tmp/chorus
-ssh <USER>@<VPS_HOST> 'sudo cp /tmp/chorus /opt/chorus/bin/chorus && sudo chmod 755 /opt/chorus/bin/chorus && sudo chown chorus:chorus /opt/chorus/bin/chorus'
-
-# 設定ファイル転送
-scp config/chorus.toml <USER>@<VPS_HOST>:/tmp/
-scp config/pfortner.yaml <USER>@<VPS_HOST>:/tmp/
-scp config/cloudflared.yml <USER>@<VPS_HOST>:/tmp/
-scp config/*.service <USER>@<VPS_HOST>:/tmp/
-
-# VPS 上で配置
-ssh <USER>@<VPS_HOST> bash -c '
-sudo cp /tmp/chorus.toml /opt/chorus/etc/chorus.toml
-sudo cp /tmp/pfortner.yaml /opt/pfortner/etc/pfortner.yaml
-sudo cp /tmp/cloudflared.yml /etc/cloudflared/config.yml
-sudo cp /tmp/chorus.service /tmp/pfortner.service /tmp/cloudflared.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl restart chorus pfortner cloudflared
-'
-```
-
-### Pfortner のアップデート
-
-```bash
-ssh <USER>@<VPS_HOST> 'cd /opt/pfortner/repo && sudo -u chorus git pull && sudo DENO_DIR=/opt/pfortner/cache deno cache scripts/serve.ts'
-sudo systemctl restart pfortner
-```
-
 ## 3. VPS の初期セットアップ (参考)
 
 初回のみ必要な手順です。
